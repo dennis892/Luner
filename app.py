@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 from typing import List
 
@@ -14,6 +14,9 @@ from lunardate import LunarDate
 TZ = ZoneInfo("Asia/Taipei")
 
 
+# ----------------------------
+# Core ICS generation
+# ----------------------------
 @dataclass
 class LunarEvent:
     title: str = "事件"
@@ -48,10 +51,18 @@ def format_dt_local(dt: datetime) -> str:
     return dt.strftime("%Y%m%dT%H%M%S")
 
 
-def lunar_to_solar_date(year: int, lunar_month: int, lunar_day: int, is_leap_month: bool) -> datetime:
-    ld = LunarDate(year, lunar_month, lunar_day, is_leap_month)
-    d = ld.toSolarDate()
-    return datetime(d.year, d.month, d.day, tzinfo=TZ)
+def lunar_to_solar_date(greg_year: int, lunar_month: int, lunar_day: int, is_leap_month: bool) -> date:
+    """
+    Convert lunar date to solar date for a given Gregorian year.
+    For annual repeating events, we treat each Gregorian year y as "lunar year y" for conversion.
+    """
+    ld = LunarDate(greg_year, lunar_month, lunar_day, is_leap_month)
+    return ld.toSolarDate()
+
+
+def solar_to_lunar(d: date) -> LunarDate:
+    """Convert a Gregorian date into lunar date (year/month/day + leap)."""
+    return LunarDate.fromSolarDate(d.year, d.month, d.day)
 
 
 def build_ics(events: List[LunarEvent], start_year: int, years: int, calendar_name: str = "農曆提醒") -> str:
@@ -68,8 +79,8 @@ def build_ics(events: List[LunarEvent], start_year: int, years: int, calendar_na
         h, m = parse_time_hm(ev.time)
 
         for y in range(start_year, start_year + years):
-            base = lunar_to_solar_date(y, ev.lunar_month, ev.lunar_day, ev.is_leap_month)
-            start_dt = base.replace(hour=h, minute=m, second=0)
+            solar = lunar_to_solar_date(y, ev.lunar_month, ev.lunar_day, ev.is_leap_month)
+            start_dt = datetime(solar.year, solar.month, solar.day, h, m, 0, tzinfo=TZ)
             end_dt = start_dt + timedelta(minutes=ev.duration_minutes)
 
             uid = f"{uuid.uuid4()}@lunar-ics"
@@ -99,6 +110,9 @@ def build_ics(events: List[LunarEvent], start_year: int, years: int, calendar_na
     return "\r\n".join(lines) + "\r\n"
 
 
+# ----------------------------
+# Streamlit UI (no server storage)
+# ----------------------------
 st.set_page_config(page_title="農曆行事曆提醒產生器", page_icon="🗓️", layout="wide")
 
 st.title("🗓️ 農曆行事曆提醒產生器（不存伺服器）")
@@ -106,6 +120,39 @@ st.caption(
     "輸入農曆日期與提醒設定 → 產生未來 N 年的 .ics → 下載後匯入 iPhone 行事曆。"
     "本頁面不會把你的事項寫入資料庫；僅在你目前的瀏覽器 session 記憶體中暫存。"
 )
+
+with st.expander("🔁 國曆 / 農曆 自動轉換（快速查對日期）", expanded=True):
+    tab1, tab2 = st.tabs(["國曆 → 農曆", "農曆 → 國曆"])
+
+    with tab1:
+        d = st.date_input("選擇國曆日期", value=date.today(), key="conv_solar")
+        try:
+            ld = solar_to_lunar(d)
+            leap = "（閏月）" if getattr(ld, "isLeapMonth", False) else ""
+            st.success(f"農曆：{ld.year}年 {ld.month}月{ld.day}日 {leap}".strip())
+            st.caption("提示：把這裡的『月/日』填到下方事項即可；如顯示（閏月）就勾選『閏月』。")
+        except Exception as e:
+            st.error(f"轉換失敗：{e}")
+
+    with tab2:
+        c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
+        with c1:
+            gy = st.number_input("對應西元年", min_value=1900, max_value=2200, value=datetime.now(TZ).year, step=1, key="conv_year")
+        with c2:
+            lm = st.number_input("農曆月", min_value=1, max_value=12, value=3, step=1, key="conv_lm")
+        with c3:
+            ld = st.number_input("農曆日", min_value=1, max_value=30, value=23, step=1, key="conv_ld")
+        with c4:
+            leap = st.checkbox("閏月", value=False, key="conv_leap")
+
+        try:
+            solar = lunar_to_solar_date(int(gy), int(lm), int(ld), bool(leap))
+            st.success(f"國曆：{solar.isoformat()}（{solar.strftime('%a')}）")
+            st.caption("提示：『對應西元年』代表你要查『那一年』的農曆日期落在哪一天國曆。")
+        except Exception as e:
+            st.error(f"轉換失敗：{e}")
+
+st.divider()
 
 if "events" not in st.session_state:
     st.session_state.events = [
