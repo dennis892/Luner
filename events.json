@@ -1,12 +1,12 @@
 [
   {
-    "title": "媽祖生日",
-    "lunar_month": 3,
-    "lunar_day": 23,
+    "title": "土地公拜拜（初二）",
+    "lunar_month": 1,
+    "lunar_day": 2,
     "is_leap_month": false,
-    "time": "09:00",
-    "duration_minutes": 30,
-    "alarm_minutes_before": 1440,
-    "notes": "準備供品/香燭"
+    "time": "08:30",
+    "duration_minutes": 15,
+    "alarm_minutes_before": 720,
+    "notes": "買水果/餅乾"
   }
 ]
