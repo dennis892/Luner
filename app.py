@@ -99,37 +99,43 @@ def build_ics(events: List[LunarEvent], start_year: int, years: int, calendar_na
     return "\r\n".join(lines) + "\r\n"
 
 
-def apply_css() -> None:
+def apply_css(theme: str = "omamori", title_font: str = "毛筆字") -> None:
     """
-    Single style:
-    - 日式御守感（亮色系）
-    - 朱紅背景
-    - 標題固定毛筆字
+    Single theme: Omamori (light / vermilion).
+    title_font: "毛筆字" or "系統預設"
     """
-    accent = "#F5D76E"   # gold-ish
-    accent2 = "#FFFFFF"  # highlight
-    bg = "#B3131B"       # vermilion background
-
-    surface = "rgba(255,255,255,0.92)"
-    border = "rgba(0,0,0,0.10)"
+    # Light, vermilion-forward palette
+    accent = "#C1121F"   # vermilion
+    accent2 = "#D4AF37"  # gold
+    bg = "#F8F3EA"       # washi
+    surface = "rgba(255,255,255,0.82)"
+    border = "rgba(120,72,36,0.18)"
     text = "#1F2937"
-    muted = "rgba(55,65,81,0.72)"
-    glow1 = "rgba(245,215,110,0.20)"
-    glow2 = "rgba(255,255,255,0.12)"
+    muted = "rgba(55,65,81,0.70)"
+    glow1 = "rgba(193,18,31,0.10)"
+    glow2 = "rgba(212,175,55,0.08)"
+
+    # Title font option (Google Fonts)
+    title_font_css = ""
+    if title_font == "毛筆字":
+        title_font_css = """
+@import url('https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap');
+h1, h2, h3, [data-testid="stHeader"] {
+  font-family: "Yuji Syuku", ui-serif, "Hiragino Mincho ProN", "Noto Serif TC", serif !important;
+}
+"""
+    else:
+        title_font_css = ""
 
     st.markdown(
         f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap');
+{title_font_css}
 
-h1, h2, h3 {{
-  font-family: "Yuji Syuku", ui-serif, "Hiragino Mincho ProN", "Noto Serif TC", serif !important;
-  letter-spacing: 0.01em;
-}}
-
+/* page */
 .stApp {{
   background:
-    radial-gradient(1200px 800px at 18% 8%, {glow1}, transparent 55%),
+    radial-gradient(1200px 800px at 20% 10%, {glow1}, transparent 55%),
     radial-gradient(900px 700px at 85% 15%, {glow2}, transparent 60%),
     {bg};
   color: {text};
@@ -142,51 +148,57 @@ h1, h2, h3 {{
 }}
 
 [data-testid="stCaptionContainer"] {{
-  color: rgba(255,255,255,0.78) !important;
-}}
-
-div[data-testid="stExpander"] [data-testid="stCaptionContainer"] {{
   color: {muted} !important;
 }}
 
+/* cards */
 div[data-testid="stExpander"] > details {{
   border: 1px solid {border};
-  border-radius: 18px;
+  border-radius: 16px;
   background: {surface};
-  box-shadow: 0 14px 34px rgba(0,0,0,0.18);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.06);
 }}
 div[data-testid="stExpander"] summary {{
   font-weight: 650;
 }}
 
+/* inputs */
 input, textarea {{
   border-radius: 12px !important;
 }}
 
+/* buttons */
 .stButton>button {{
   border-radius: 14px;
   border: 1px solid {border};
-  background: rgba(255,255,255,0.86);
+  background: {surface};
   color: {text};
   padding: 0.55rem 0.85rem;
 }}
-
-div.stDownloadButton>button {{
-  border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: linear-gradient(135deg, {accent}, {accent2});
-  color: #1F2937;
-  font-weight: 700;
-  padding: 0.62rem 0.95rem;
+.stButton>button:hover {{
+  filter: brightness(1.02);
 }}
 
+/* download */
+div.stDownloadButton>button {{
+  border-radius: 14px;
+  border: 1px solid {border};
+  background: linear-gradient(135deg, {accent}, {accent2});
+  color: white;
+  padding: 0.62rem 0.95rem;
+}}
+div.stDownloadButton>button:hover {{
+  filter: brightness(1.04);
+}}
+
+/* washi grain */
 .stApp:before{{
   content:'';
   position:fixed; inset:0;
   pointer-events:none;
-  background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 6px 6px;
-  opacity: 0.25;
+  opacity: 0.32;
   mix-blend-mode: multiply;
 }}
 </style>
@@ -196,7 +208,6 @@ div.stDownloadButton>button {{
 
 
 def ensure_defaults() -> None:
-
 
 
     if "events" not in st.session_state:
@@ -222,7 +233,8 @@ def alarm_label_to_minutes(label: str, current: int | None) -> int | None:
 
 
 st.set_page_config(page_title="農曆提醒產生器", page_icon="🗓️", layout="wide")
-apply_css()
+title_font = st.selectbox("標題字體", ["毛筆字", "系統預設"], index=0, help="只影響標題（h1/h2/h3）。毛筆字需要網路載入字型。")
+apply_css("omamori", title_font=title_font)
 
 st.title("🗓️ 農曆提醒產生器")
 st.caption("以農曆為主建立提醒，輸出 iPhone 可匯入的 .ics。資料不會寫入資料庫，只在你這次瀏覽器暫存。")
@@ -231,20 +243,21 @@ ensure_defaults()
 
 st.subheader("產生設定")
 st.caption("這裡決定要幫你產生『哪些國曆年份』的事件（例如：2026 起，往後 20 年）。")
-c1, c2 = st.columns([1, 1])
+c1, c2, c3 = st.columns([1, 1, 2])
 with c1:
     start_year = st.number_input("起始年（國曆）", min_value=1900, max_value=2200, value=datetime.now(TZ).year, step=1)
 with c2:
     years = st.number_input("往後產生（年）", min_value=1, max_value=60, value=20, step=1)
-
-calendar_name = "農曆提醒"
+with c3:
+    calendar_name = st.text_input("匯入顯示名稱", value="農曆提醒")
 
 b1, b2 = st.columns([1, 3])
 with b1:
     if st.button("➕ 增加事項", use_container_width=True):
         st.session_state.events.append(asdict(LunarEvent()))
 with b2:
-    
+    st.caption("提示：iPhone 匯入時請選你建立的『農曆提醒』行事曆。")
+
 st.divider()
 st.subheader("事項清單")
 
@@ -258,6 +271,7 @@ for idx, ev in enumerate(list(st.session_state.events)):
         top = st.columns([2, 1, 1, 1])
         ev["title"] = top[0].text_input("名稱", value=ev.get("title", ""), key=f"title_{idx}")
 
+        if mode == "農曆":
             mid = st.columns([1, 1, 1, 2])
             ev["lunar_month"] = mid[0].number_input("農曆月", 1, 12, int(ev.get("lunar_month", 1)), 1, key=f"lm_{idx}")
             ev["lunar_day"] = mid[1].number_input("農曆日", 1, 30, int(ev.get("lunar_day", 1)), 1, key=f"ld_{idx}")
@@ -268,6 +282,19 @@ for idx, ev in enumerate(list(st.session_state.events)):
             except Exception:
                 pass
         else:
+            sol_key = f"solar_{idx}"
+            if sol_key not in st.session_state:
+                st.session_state[sol_key] = date.today()
+            d = st.date_input("國曆日期", value=st.session_state[sol_key], key=sol_key)
+            try:
+                ld = solar_to_lunar(d)
+                is_leap = bool(getattr(ld, "isLeapMonth", False))
+                ev["lunar_month"] = int(ld.month)
+                ev["lunar_day"] = int(ld.day)
+                ev["is_leap_month"] = is_leap
+                st.markdown(f"**自動轉成農曆：** {ld.year}年 {ld.month}月{ld.day}日 {'（閏月）' if is_leap else ''}")
+            except Exception as e:
+                st.error(f"轉換失敗：{e}")
 
         row = st.columns([1, 1, 1, 2])
         ev["time"] = row[0].text_input("時間 HH:MM", value=ev.get("time", "09:00"), key=f"time_{idx}")
