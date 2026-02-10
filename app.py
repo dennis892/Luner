@@ -64,7 +64,15 @@ def build_ics(events: List[LunarEvent], start_year: int, years: int, calendar_na
     for ev in events:
         h, m = parse_time_hm(ev.time)
         for y in range(start_year, start_year + years):
-            solar = lunar_to_solar_date(y, ev.lunar_month, ev.lunar_day, ev.is_leap_month)
+            try:
+
+                solar = lunar_to_solar_date(y, ev.lunar_month, ev.lunar_day, ev.is_leap_month)
+
+            except Exception:
+
+                # 某些年份不存在此閏月（或日期無效）→ 跳過該年份
+
+                continue
             start_dt = datetime(solar.year, solar.month, solar.day, h, m, 0, tzinfo=TZ)
             end_dt = start_dt + timedelta(minutes=ev.duration_minutes)
 
@@ -251,7 +259,7 @@ for idx, ev in enumerate(list(st.session_state.events)):
             preview = lunar_to_solar_date(int(start_year), int(ev["lunar_month"]), int(ev["lunar_day"]), bool(ev["is_leap_month"]))
             d4.markdown(f"**{start_year} 年對應國曆：** {preview.isoformat()}")
         except Exception:
-            d4.markdown("")
+            d4.markdown("⚠️ 此起始年沒有這個閏月（或日期無效），會自動略過該年份。")
 
         t1, t2, t3, t4 = st.columns([1, 1, 1, 2])
         ev["time"] = t1.text_input("時間 HH:MM", value=ev.get("time", "09:00"), key=f"time_{idx}")
