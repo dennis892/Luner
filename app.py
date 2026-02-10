@@ -100,47 +100,120 @@ def build_ics(events: List[LunarEvent], start_year: int, years: int, calendar_na
 
 
 def apply_css(style_mode: str) -> None:
+    """
+    3 themes:
+    - 簡單乾淨：深色、低干擾
+    - 拜拜吉利：金紅、莊重
+    - 日式御守風：米白和紙、朱紅點綴、金箔感，乾淨留白
+    """
     if style_mode == "拜拜吉利":
-        accent = "#D4AF37"
-        accent2 = "#C62828"
+        accent = "#D4AF37"   # gold
+        accent2 = "#C62828"  # red
         bg = "#0B0F19"
+        surface = "rgba(255,255,255,0.04)"
+        border = "rgba(148,163,184,0.22)"
         text = "#F9FAFB"
         muted = "#CBD5E1"
-    else:
+        glow1 = "rgba(212,175,55,0.16)"
+        glow2 = "rgba(198,40,40,0.14)"
+
+    elif style_mode == "日式御守風":
+        accent = "#C1121F"   # vermilion
+        accent2 = "#D4AF37"  # gold
+        bg = "#F7F2E8"       # washi paper
+        surface = "rgba(255,255,255,0.78)"
+        border = "rgba(120,72,36,0.18)"
+        text = "#1F2937"
+        muted = "rgba(55,65,81,0.72)"
+        glow1 = "rgba(193,18,31,0.10)"
+        glow2 = "rgba(212,175,55,0.08)"
+
+    else:  # 簡單乾淨
         accent = "#2563EB"
         accent2 = "#0EA5E9"
         bg = "#0B1220"
+        surface = "rgba(255,255,255,0.03)"
+        border = "rgba(148,163,184,0.20)"
         text = "#E5E7EB"
         muted = "#94A3B8"
+        glow1 = "rgba(37,99,235,0.18)"
+        glow2 = "rgba(14,165,233,0.12)"
+
+    omamori_grain = ""
+    if style_mode == "日式御守風":
+        omamori_grain = """
+.stApp:before{
+  content:'';
+  position:fixed; inset:0;
+  pointer-events:none;
+  background-image: radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 6px 6px;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+}
+"""
 
     st.markdown(
         f"""
 <style>
 .stApp {{
-  background: radial-gradient(1200px 800px at 20% 10%, rgba(37,99,235,0.18), transparent 55%),
-              radial-gradient(900px 700px at 85% 15%, rgba(14,165,233,0.12), transparent 60%),
-              {bg};
+  background:
+    radial-gradient(1200px 800px at 20% 10%, {glow1}, transparent 55%),
+    radial-gradient(900px 700px at 85% 15%, {glow2}, transparent 60%),
+    {bg};
   color: {text};
 }}
-.block-container {{ padding-top: 2.2rem; }}
-div[data-testid="stExpander"] > details {{
-  border: 1px solid rgba(148,163,184,0.20);
-  border-radius: 16px;
-  background: rgba(255,255,255,0.03);
+
+.block-container {{
+  padding-top: 2.2rem;
+  padding-bottom: 3rem;
 }}
+
+h1, h2, h3 {{
+  letter-spacing: -0.02em;
+}}
+
+[data-testid="stCaptionContainer"] {{
+  color: {muted} !important;
+}}
+
+div[data-testid="stExpander"] > details {{
+  border: 1px solid {border};
+  border-radius: 16px;
+  background: {surface};
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+}}
+
+div[data-testid="stExpander"] summary {{
+  font-weight: 650;
+}}
+
+input, textarea {{
+  border-radius: 12px !important;
+}}
+
 .stButton>button {{
   border-radius: 14px;
-  border: 1px solid rgba(148,163,184,0.24);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid {border};
+  background: {surface};
   color: {text};
+  padding: 0.55rem 0.85rem;
 }}
+
 div.stDownloadButton>button {{
   border-radius: 14px;
-  border: 1px solid rgba(148,163,184,0.24);
+  border: 1px solid {border};
   background: linear-gradient(135deg, {accent}, {accent2});
   color: white;
+  padding: 0.62rem 0.95rem;
 }}
-[data-testid="stCaptionContainer"] {{ color: {muted} !important; }}
+
+section[data-testid="stSidebar"] {{
+  background: {surface};
+  border-right: 1px solid {border};
+}}
+
+{omamori_grain}
 </style>
 """,
         unsafe_allow_html=True,
@@ -148,6 +221,7 @@ div.stDownloadButton>button {{
 
 
 def ensure_defaults() -> None:
+
     if "events" not in st.session_state:
         st.session_state.events = [
             asdict(LunarEvent(
@@ -171,7 +245,7 @@ def alarm_label_to_minutes(label: str, current: int | None) -> int | None:
 
 
 st.set_page_config(page_title="農曆提醒產生器", page_icon="🗓️", layout="wide")
-style_mode = st.sidebar.selectbox("風格", ["簡單乾淨", "拜拜吉利"], index=0)
+style_mode = st.sidebar.selectbox("風格", ["簡單乾淨", "拜拜吉利", "日式御守風"], index=0)
 apply_css(style_mode)
 
 st.title("🗓️ 農曆提醒產生器")
