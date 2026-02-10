@@ -278,29 +278,30 @@ if not st.session_state.events:
 
 st.divider()
 
-with st.expander("匯入 / 匯出（events.json）", expanded=False):
+with st.expander("📦 備份 / 還原（農曆事項）", expanded=False):
+    st.caption("備份檔只包含你設定的農曆事項，不會修改手機行事曆。")
     left, right = st.columns(2)
     with left:
         export_json = json.dumps(st.session_state.events, ensure_ascii=False, indent=2)
         st.download_button(
-            "下載 events.json",
+            "下載備份檔",
             data=export_json.encode("utf-8"),
             file_name="events.json",
             mime="application/json",
             use_container_width=True
         )
     with right:
-        up = st.file_uploader("匯入 events.json", type=["json"])
+        up = st.file_uploader("還原備份檔", type=["json"])
         if up is not None:
             try:
                 raw = json.loads(up.getvalue().decode("utf-8"))
                 if not isinstance(raw, list):
-                    raise ValueError("events.json 需為陣列（list）")
+                    raise ValueError("備份檔格式錯誤：內容需為陣列（list）")
                 st.session_state.events = raw if raw else [asdict(LunarEvent())]
-                st.success(f"已匯入 {len(st.session_state.events)} 筆事項。")
+                st.success(f"已還原 {len(st.session_state.events)} 筆事項。")
                 st.rerun()
             except Exception as e:
-                st.error(f"匯入失敗：{e}")
+                st.error(f"還原失敗：{e}")
 
 st.divider()
 st.subheader("下載 .ics")
